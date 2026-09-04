@@ -1,40 +1,54 @@
-from collections import defaultdict
+from database.database import get_connection
 
 
 class EntityMemory:
-
-    def __init__(self):
-
-        self.entities = defaultdict(list)
 
     def add_memory(
         self,
         entity: str,
         fact: str,
-        importance: float = 0.65
+        importance: float
     ):
 
-        memory = {
-            "fact": fact,
-            "importance": importance
-        }
+        connection = get_connection()
 
-        # Prevent exact duplicates
-        if memory not in self.entities[entity]:
-            self.entities[entity].append(memory)
+        cursor = connection.cursor()
 
-    def get_memories(self, entity: str):
-
-        memories = self.entities.get(entity, [])
-
-        sorted_memories = sorted(
-            memories,
-            key=lambda x: x["importance"],
-            reverse=True
+        cursor.execute("""
+        INSERT INTO entity_memory (
+            entity,
+            fact,
+            importance
         )
+        VALUES (?, ?, ?)
+        """, (
+            entity,
+            fact,
+            importance
+        ))
 
-        return sorted_memories
+        connection.commit()
+
+        connection.close()
+
 
     def get_all(self):
 
-        return dict(self.entities)
+        connection = get_connection()
+
+        cursor = connection.cursor()
+
+        cursor.execute("""
+        SELECT entity, fact, importance
+        FROM entity_memory
+        ORDER BY importance DESC
+        """)
+
+        rows = cursor.fetchall()
+
+        connection.close()
+
+        return [
+            dict(row)
+            for row in rows
+        ]

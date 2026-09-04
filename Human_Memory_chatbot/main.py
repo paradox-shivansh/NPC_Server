@@ -5,6 +5,13 @@ from memory.reflection_memory import ReflectionMemory
 from memory.charecter_memory import CharacterMemory
 
 from graph.chatbot_graph import build_graph
+from database.database import initialize_database
+
+# -----------------------
+# INITIALIZE DATABASE
+# -----------------------
+
+initialize_database()
 
 
 # -----------------------

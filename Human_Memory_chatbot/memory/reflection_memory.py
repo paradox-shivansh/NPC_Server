@@ -1,29 +1,52 @@
+from database.database import get_connection
+
+
 class ReflectionMemory:
-
-    def __init__(self):
-
-        self.reflections = []
 
     def add_reflection(
         self,
         lesson: str,
-        importance: float = 0.5
+        importance: float
     ):
 
-        reflection = {
-            "lesson": lesson,
-            "importance": importance
-        }
+        connection = get_connection()
 
-        self.reflections.append(reflection)
+        cursor = connection.cursor()
 
-
-    def get_reflections(self, limit=5):
-
-        reflections = sorted(
-            self.reflections,
-            key=lambda x: x["importance"],
-            reverse=True
+        cursor.execute("""
+        INSERT INTO reflection_memory (
+            lesson,
+            importance
         )
+        VALUES (?, ?)
+        """, (
+            lesson,
+            importance
+        ))
 
-        return reflections[:limit]
+        connection.commit()
+
+        connection.close()
+
+
+    def get_reflections(self):
+
+        connection = get_connection()
+
+        cursor = connection.cursor()
+
+        cursor.execute("""
+        SELECT lesson, importance, created_at
+        FROM reflection_memory
+        ORDER BY importance DESC
+        LIMIT 10
+        """)
+
+        rows = cursor.fetchall()
+
+        connection.close()
+
+        return [
+            dict(row)
+            for row in rows
+        ]

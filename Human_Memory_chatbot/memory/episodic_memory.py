@@ -1,11 +1,7 @@
-from datetime import datetime
+from database.database import get_connection
 
 
 class EpisodicMemory:
-
-    def __init__(self):
-
-        self.episodes = []
 
     def add_episode(
         self,
@@ -13,27 +9,44 @@ class EpisodicMemory:
         importance: float
     ):
 
-        episode = {
-            "content": content,
-            "importance": importance,
-            "timestamp": datetime.now().isoformat()
-        }
+        connection = get_connection()
 
-        self.episodes.append(episode)
+        cursor = connection.cursor()
 
-    def get_relevant_episodes(
-        self,
-        limit: int = 5
-    ):
-
-        episodes = sorted(
-            self.episodes,
-            key=lambda x: x["importance"],
-            reverse=True
+        cursor.execute("""
+        INSERT INTO episodic_memory (
+            content,
+            importance
         )
+        VALUES (?, ?)
+        """, (
+            content,
+            importance
+        ))
 
-        return episodes[:limit]
+        connection.commit()
 
-    def get_all(self):
+        connection.close()
 
-        return self.episodes
+
+    def get_relevant_episodes(self):
+
+        connection = get_connection()
+
+        cursor = connection.cursor()
+
+        cursor.execute("""
+        SELECT content, importance, created_at
+        FROM episodic_memory
+        ORDER BY importance DESC, created_at DESC
+        LIMIT 10
+        """)
+
+        rows = cursor.fetchall()
+
+        connection.close()
+
+        return [
+            dict(row)
+            for row in rows
+        ]

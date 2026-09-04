@@ -1,16 +1,7 @@
-from config import llm
+from database.database import get_connection
 
 
 class SummaryMemory:
-
-    def __init__(self):
-
-        self.summary = ""
-
-        self.recent_messages = []
-
-        self.max_messages = 10
-
 
     def add_message(
         self,
@@ -18,60 +9,96 @@ class SummaryMemory:
         content: str
     ):
 
-        self.recent_messages.append({
-            "role": role,
-            "content": content
-        })
+        connection = get_connection()
 
+        cursor = connection.cursor()
 
-    def should_summarize(self):
-
-        return len(self.recent_messages) > self.max_messages
-
-
-    def update_summary(self):
-
-        conversation = "\n".join(
-
-            f"{message['role']}: {message['content']}"
-
-            for message in self.recent_messages
+        cursor.execute("""
+        INSERT INTO conversation_buffer (
+            role,
+            content
         )
+        VALUES (?, ?)
+        """, (
+            role,
+            content
+        ))
 
-        prompt = f"""
-You maintain a long-term conversation summary.
+        connection.commit()
 
-Existing summary:
-
-{self.summary}
-
-New conversation:
-
-{conversation}
-
-Create an updated summary.
-
-Keep:
-
-- Important facts
-- User goals
-- Important ongoing tasks
-- Decisions
-- Context needed for future conversations
-
-Do not include unnecessary details.
-"""
-
-        result = llm.invoke(prompt)
-
-        self.summary = result.content
-
-        self.recent_messages = []
+        connection.close()
 
 
     def get_context(self):
 
+        connection = get_connection()
+
+        cursor = connection.cursor()
+
+
+        # Get summary
+
+        cursor.execute("""
+        SELECT summary
+        FROM summary_memory
+        WHERE id = 1
+        """)
+
+        row = cursor.fetchone()
+
+        summary = ""
+
+        if row:
+            summary = row["summary"] or ""
+
+
+        # Get recent messages
+
+        cursor.execute("""
+        SELECT role, content
+        FROM conversation_buffer
+        ORDER BY id DESC
+        LIMIT 10
+        """)
+
+        messages = cursor.fetchall()
+
+        connection.close()
+
+
+        messages = list(reversed(messages))
+
+
         return {
-            "summary": self.summary,
-            "recent_messages": self.recent_messages
+            "summary": summary,
+            "recent_messages": [
+                dict(message)
+                for message in messages
+            ]
         }
+
+
+    def should_summarize(self):
+
+        connection = get_connection()
+
+        cursor = connection.cursor()
+
+        cursor.execute("""
+        SELECT COUNT(*)
+        FROM conversation_buffer
+        """)
+
+        count = cursor.fetchone()[0]
+
+        connection.close()
+
+        return count >= 20
+
+
+    def update_summary(self):
+
+        # We will connect this
+        # to your LLM summarization agent next
+
+        pass

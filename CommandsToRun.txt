@@ -1,0 +1,12 @@
+# istall uv package manager
+uv init
+uv venv
+new-item .env
+# now add groq api key
+uv add requirements.txt
+.venv\Scripts\activate
+
+
+// To Run the Demo Chat-bot and memory systems
+cd Human_Memory_chatbot
+uv run python main.py

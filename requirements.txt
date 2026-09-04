@@ -2,3 +2,18 @@ langchain
 langchain-groq
 langchain-core
 tiktoken
+pydantic
+python-dotenv
+
+# // PostgreSQL
+psycopg
+sqlalchemy
+pgvector
+
+# Embeddings
+langchain-huggingface
+sentence-transformers
+
+# Version one installs
+langgraph
+

@@ -5,15 +5,21 @@ tiktoken
 pydantic
 python-dotenv
 
-# // PostgreSQL
+# PostgreSQL
+
 psycopg
 sqlalchemy
 pgvector
 
 # Embeddings
+
 langchain-huggingface
 sentence-transformers
 
-# Version one installs
+# LangGraph
+
 langgraph
 
+# Vector database
+
+chromadb

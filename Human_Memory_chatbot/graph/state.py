@@ -18,3 +18,5 @@ class ChatbotState(TypedDict):
     character_context: Any
 
     response: str
+    
+    reflection_result: Any

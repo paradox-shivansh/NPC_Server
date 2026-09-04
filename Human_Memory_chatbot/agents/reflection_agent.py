@@ -40,6 +40,8 @@ Do not overreact to a single conversation.
 Personality changes should only be suggested
 when there is meaningful evidence.
 
+Use this scale: 0.0 = Completely unsuccessful interaction 0.25 = Poor interaction 0.5 = Average interaction 0.75 = Good interaction 1.0 = Excellent interaction
+
 Return structured output.
 """
 

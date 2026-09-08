@@ -3,25 +3,58 @@ from database.database import get_connection
 
 class SummaryMemory:
 
-    def add_message(
-        self,
-        role: str,
-        content: str
-    ):
+    def __init__(self, npc_id):
 
-        connection = get_connection()
+        self.npc_id = npc_id
+
+        self.create_table()
+
+
+    def create_table(self):
+
+        connection = get_connection(self.npc_id)
 
         cursor = connection.cursor()
 
         cursor.execute("""
-        INSERT INTO conversation_buffer (
-            role,
-            content
+        CREATE TABLE IF NOT EXISTS summary_memory (
+
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+            summary TEXT,
+
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+
         )
-        VALUES (?, ?)
+        """)
+
+        connection.commit()
+
+        connection.close()
+
+
+    def update_summary(
+
+        self,
+
+        summary
+
+    ):
+
+        connection = get_connection(self.npc_id)
+
+        cursor = connection.cursor()
+
+        cursor.execute("""
+        INSERT INTO summary_memory
+
+        (summary)
+
+        VALUES (?)
         """, (
-            role,
-            content
+
+            summary,
+
         ))
 
         connection.commit()
@@ -29,76 +62,34 @@ class SummaryMemory:
         connection.close()
 
 
-    def get_context(self):
+    def get_latest(
 
-        connection = get_connection()
+        self
+
+    ):
+
+        connection = get_connection(self.npc_id)
 
         cursor = connection.cursor()
 
-
-        # Get summary
-
         cursor.execute("""
         SELECT summary
+
         FROM summary_memory
-        WHERE id = 1
+
+        ORDER BY id DESC
+
+        LIMIT 1
         """)
 
         row = cursor.fetchone()
 
-        summary = ""
+        connection.close()
+
 
         if row:
-            summary = row["summary"] or ""
+
+            return row["summary"]
 
 
-        # Get recent messages
-
-        cursor.execute("""
-        SELECT role, content
-        FROM conversation_buffer
-        ORDER BY id DESC
-        LIMIT 10
-        """)
-
-        messages = cursor.fetchall()
-
-        connection.close()
-
-
-        messages = list(reversed(messages))
-
-
-        return {
-            "summary": summary,
-            "recent_messages": [
-                dict(message)
-                for message in messages
-            ]
-        }
-
-
-    def should_summarize(self):
-
-        connection = get_connection()
-
-        cursor = connection.cursor()
-
-        cursor.execute("""
-        SELECT COUNT(*)
-        FROM conversation_buffer
-        """)
-
-        count = cursor.fetchone()[0]
-
-        connection.close()
-
-        return count >= 20
-
-
-    def update_summary(self):
-
-        # We will connect this
-        # to your LLM summarization agent next
-
-        pass
+        return ""

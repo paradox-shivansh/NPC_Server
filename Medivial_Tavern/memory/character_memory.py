@@ -1,7 +1,9 @@
+import json
+
 from database.database import get_connection
 
 
-class ReflectionMemory:
+class CharacterMemory:
 
     def __init__(self, npc_id):
 
@@ -17,15 +19,13 @@ class ReflectionMemory:
         cursor = connection.cursor()
 
         cursor.execute("""
-        CREATE TABLE IF NOT EXISTS reflection_memory (
+        CREATE TABLE IF NOT EXISTS character_memory (
 
             id INTEGER PRIMARY KEY AUTOINCREMENT,
 
-            lesson TEXT,
+            traits TEXT,
 
-            importance REAL,
-
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 
         )
         """)
@@ -35,13 +35,11 @@ class ReflectionMemory:
         connection.close()
 
 
-    def add_reflection(
+    def update_traits(
 
         self,
 
-        lesson,
-
-        importance=0.5
+        traits
 
     ):
 
@@ -50,16 +48,14 @@ class ReflectionMemory:
         cursor = connection.cursor()
 
         cursor.execute("""
-        INSERT INTO reflection_memory
+        INSERT INTO character_memory
 
-        (lesson, importance)
+        (traits)
 
-        VALUES (?, ?)
+        VALUES (?)
         """, (
 
-            lesson,
-
-            importance
+            json.dumps(traits),
 
         ))
 
@@ -68,41 +64,34 @@ class ReflectionMemory:
         connection.close()
 
 
-    def get_reflections(
-
-        self,
-
-        limit=5
-
-    ):
+    def get_traits(self):
 
         connection = get_connection(self.npc_id)
 
         cursor = connection.cursor()
 
         cursor.execute("""
-        SELECT *
+        SELECT traits
 
-        FROM reflection_memory
+        FROM character_memory
 
-        ORDER BY importance DESC
+        ORDER BY id DESC
 
-        LIMIT ?
-        """, (
+        LIMIT 1
+        """)
 
-            limit,
-
-        ))
-
-        rows = cursor.fetchall()
+        row = cursor.fetchone()
 
         connection.close()
 
 
-        return [
+        if row:
 
-            dict(row)
+            return json.loads(
 
-            for row in rows
+                row["traits"]
 
-        ]
+            )
+
+
+        return {}

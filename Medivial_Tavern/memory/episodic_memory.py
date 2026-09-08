@@ -1,52 +1,108 @@
-from database.database import get_connection
+import uuid
+
+import chromadb
 
 
 class EpisodicMemory:
 
+    def __init__(self, npc_id):
+
+        self.npc_id = npc_id
+
+
+        self.client = chromadb.PersistentClient(
+
+            path=f"data/{npc_id}/chroma"
+
+        )
+
+
+        self.collection = self.client.get_or_create_collection(
+
+            name="episodes"
+
+        )
+
+
     def add_episode(
+
         self,
-        content: str,
-        importance: float
+
+        content,
+
+        importance=0.5
+
     ):
 
-        connection = get_connection()
+        episode_id = str(uuid.uuid4())
 
-        cursor = connection.cursor()
 
-        cursor.execute("""
-        INSERT INTO episodic_memory (
-            content,
-            importance
+        self.collection.add(
+
+            ids=[episode_id],
+
+            documents=[content],
+
+            metadatas=[
+
+                {
+
+                    "importance": importance
+
+                }
+
+            ]
+
         )
-        VALUES (?, ?)
-        """, (
-            content,
-            importance
-        ))
-
-        connection.commit()
-
-        connection.close()
 
 
-    def get_relevant_episodes(self):
+    def retrieve(
 
-        connection = get_connection()
+        self,
 
-        cursor = connection.cursor()
+        query,
 
-        cursor.execute("""
-        SELECT content, importance, created_at
-        FROM episodic_memory
-        ORDER BY importance DESC, created_at DESC
-        LIMIT 10
-        """)
+        limit=5
 
-        rows = cursor.fetchall()
+    ):
 
-        connection.close()
+        if self.collection.count() == 0:
+
+            return []
+
+
+        results = self.collection.query(
+
+            query_texts=[query],
+
+            n_results=min(
+
+                limit,
+
+                self.collection.count()
+
+            )
+
+        )
+
+
+        documents = results["documents"][0]
+
+        metadatas = results["metadatas"][0]
+
 
         return [
-            dict(row)
-            for row in rows
+
+            {
+
+                "content": document,
+
+                "metadata": metadata
+
+            }
+
+            for document, metadata
+
+            in zip(documents, metadatas)
+
         ]

@@ -33,7 +33,12 @@ from world.day_manager import DayManager
 
 from conversation.conversation_manager import ConversationManager
 
+from database.schema import initialize_database
 
+
+initialize_database("eva")
+initialize_database("freddy")
+initialize_database("john")
 # =====================================
 # CREATE LLM
 # =====================================

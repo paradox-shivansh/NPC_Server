@@ -1,7 +1,7 @@
 import random
 
 from langchain_groq import ChatGroq
-
+from tts.tts_manager import TTSManager
 from config.settings import (
     GROQ_API_KEY,
     MODEL_NAME,
@@ -36,6 +36,13 @@ llm = ChatGroq(
 
 
 # --------------------------------------------------
+# TTS
+# --------------------------------------------------
+
+tts_manager = TTSManager()
+
+
+# --------------------------------------------------
 # CHARACTERS
 # --------------------------------------------------
 
@@ -57,7 +64,8 @@ characters = {
 reviewer = ReviewerAgent(llm)
 
 conversation_manager = ConversationManager(
-    reviewer
+    reviewer,
+    tts_manager
 )
 
 

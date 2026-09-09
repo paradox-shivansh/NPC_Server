@@ -1,24 +1,22 @@
+import os
 import asyncio
 import edge_tts
 import pygame
-import os
-import uuid
 
 
 class TTSManager:
 
     def __init__(self):
+
+        self.voice_folder = "voice"
+
+        # create voice folder if missing
+        os.makedirs(
+            self.voice_folder,
+            exist_ok=True
+        )
+
         pygame.mixer.init()
-
-        self.voices = {
-
-            "Eva": "en-US-AriaNeural",
-
-            "Freddy": "en-US-GuyNeural",
-
-            "John": "en-US-DavisNeural"
-
-        }
 
 
     async def _generate_audio(
@@ -29,12 +27,13 @@ class TTSManager:
     ):
 
         communicate = edge_tts.Communicate(
-            text=text,
-            voice=voice
+            text,
+            voice
         )
 
-        await communicate.save(output_file)
-
+        await communicate.save(
+            output_file
+        )
 
 
     def speak(
@@ -43,30 +42,51 @@ class TTSManager:
         text
     ):
 
+        voices = {
+
+            "Eva":
+                "en-US-JennyNeural",
+
+            "Freddy":
+                "en-US-GuyNeural",
+
+            "John":
+                "en-GB-RyanNeural"
+
+        }
+
+
+        voice = voices.get(
+            character_name,
+            "en-US-JennyNeural"
+        )
+
+
+        # unique file name
+        filename = (
+            f"{character_name}_speech.mp3"
+        )
+
+
+        output_file = os.path.join(
+            self.voice_folder,
+            filename
+        )
+
+
         try:
-
-            voice = self.voices.get(
-                character_name,
-                "en-US-AriaNeural"
-            )
-
-
-            filename = (
-                f"tts_{uuid.uuid4()}.mp3"
-            )
-
 
             asyncio.run(
                 self._generate_audio(
                     text,
                     voice,
-                    filename
+                    output_file
                 )
             )
 
 
             pygame.mixer.music.load(
-                filename
+                output_file
             )
 
             pygame.mixer.music.play()
@@ -76,20 +96,9 @@ class TTSManager:
                 pygame.time.Clock().tick(10)
 
 
-            pygame.mixer.music.unload()
-
-
-            os.remove(filename)
-
-
 
         except Exception as e:
 
             print(
-                "⚠️ TTS failed:",
-                e
-            )
-
-            print(
-                "Continuing simulation..."
+                f"⚠️ TTS failed: {e}"
             )

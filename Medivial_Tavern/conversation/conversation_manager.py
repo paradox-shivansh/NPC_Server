@@ -3,11 +3,13 @@ from conversation.conversation_state import ConversationState
 
 class ConversationManager:
 
-    def __init__(self, reviewer, tts_manager):
-
+    def __init__(
+        self,
+        reviewer,
+        tts_manager
+    ):
         self.reviewer = reviewer
         self.tts_manager = tts_manager
-
 
     def start_conversation(
         self,
@@ -42,13 +44,11 @@ class ConversationManager:
                 else npc_one
             )
 
-
             # -----------------------------------------
             # GET CONVERSATION HISTORY
             # -----------------------------------------
 
             history = conversation.get_history()
-
 
             # -----------------------------------------
             # GENERATE NPC RESPONSE
@@ -60,7 +60,6 @@ class ConversationManager:
                 world_state=world_state.to_dict(),
             )
 
-
             # -----------------------------------------
             # SAVE MESSAGE
             # -----------------------------------------
@@ -69,7 +68,6 @@ class ConversationManager:
                 current_speaker.name,
                 response,
             )
-
 
             # -----------------------------------------
             # PRINT
@@ -80,9 +78,8 @@ class ConversationManager:
                 f"{response}"
             )
 
-
             # -----------------------------------------
-            # 🔊 TEXT TO SPEECH
+            # TEXT TO SPEECH
             # -----------------------------------------
 
             if response and response.strip():
@@ -104,7 +101,6 @@ class ConversationManager:
                         "Continuing conversation..."
                     )
 
-
             # -----------------------------------------
             # SAVE MEMORY
             # -----------------------------------------
@@ -115,7 +111,6 @@ class ConversationManager:
                 importance=0.6,
             )
 
-
             # -----------------------------------------
             # REVIEW CONVERSATION
             # -----------------------------------------
@@ -124,10 +119,15 @@ class ConversationManager:
                 conversation.get_history()
             )
 
-            if review.get("should_end", False):
+            if review.get(
+                "should_end",
+                False
+            ):
+
                 print(
                     "\n🔚 Conversation naturally ends."
                 )
+
                 break
 
             # -----------------------------------------
@@ -135,6 +135,5 @@ class ConversationManager:
             # -----------------------------------------
 
             current_speaker = target
-
 
         return conversation

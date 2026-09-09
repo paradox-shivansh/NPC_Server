@@ -23,3 +23,7 @@ langgraph
 # Vector database
 
 chromadb
+
+# TTS
+edge-tts 
+pygame

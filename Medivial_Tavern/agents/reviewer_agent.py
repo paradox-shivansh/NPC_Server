@@ -1,72 +1,63 @@
-from pydantic import BaseModel
-
-
-class ConversationReview(
-
-    BaseModel
-
-):
-
-    quality: float
-
-    repetitive: bool
-
-    should_end: bool
-
-    recommendation: str
+import json
 
 
 class ReviewerAgent:
 
+    def __init__(self, llm):
 
-    def __init__(
-
-        self,
-
-        llm
-
-    ):
-
-        self.llm = llm.with_structured_output(
-
-            ConversationReview
-
-        )
+        self.llm = llm
 
 
     def review(
-
         self,
-
         conversation
-
     ):
 
-
         prompt = f"""
-You are reviewing an NPC conversation.
+You are a conversation reviewer for a medieval tavern simulation.
 
-Check:
-
-Is the conversation repetitive?
-
-Is it progressing naturally?
-
-Should the conversation end?
-
-Conversation:
+Analyze this conversation:
 
 {conversation}
 
-Return your evaluation.
+Determine whether the conversation should continue.
+
+Return ONLY valid JSON:
+
+{{
+    "should_end": true_or_false,
+    "reason": "short reason",
+    "new_topic": "possible new topic"
+}}
+
+The conversation should end if:
+
+- it becomes repetitive
+- neither character has anything meaningful to say
+- the characters naturally reach a stopping point
+
+The conversation should continue if:
+
+- there is unresolved tension
+- a relationship is developing
+- a new topic can naturally emerge
+- something important is happening
 """
 
-
-        result = self.llm.invoke(
-
+        response = self.llm.invoke(
             prompt
-
         )
 
+        try:
 
-        return result.model_dump()
+            return json.loads(
+                response.content
+            )
+
+        except Exception:
+
+            return {
+                "should_end": False,
+                "reason": "Reviewer parsing failed",
+                "new_topic": ""
+            }

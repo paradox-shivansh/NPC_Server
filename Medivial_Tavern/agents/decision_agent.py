@@ -1,86 +1,115 @@
-from langchain_core.prompts import ChatPromptTemplate
-
-from schemas.decisions import NPCDecision
-
-
-def decide_action(
-
-    llm,
-
-    npc_name,
-
-    personality,
-
-    mood,
-
-    world_state,
-
-    available_characters
-
-):
+from typing import Literal
+from pydantic import BaseModel, Field
 
 
-    structured_llm = llm.with_structured_output(
+class ActionDecision(BaseModel):
+    action: Literal[
+        "talk",
+        "work",
+        "wander",
+        "rest"
+    ]
 
-        NPCDecision
+    target: str | None = None
 
+    initiative: int = Field(
+        default=3
     )
 
+    reason: str = ""
 
-    prompt = ChatPromptTemplate.from_template(
 
-        """
-You are controlling an autonomous NPC.
+class DecisionAgent:
+
+    def __init__(self, llm):
+        self.llm = llm
+
+        self.chain = llm.with_structured_output(
+            ActionDecision
+        )
+
+    def decide(
+        self,
+        npc,
+        world_state,
+        available_npcs
+    ):
+
+        prompt = f"""
+You are the decision-making system for an autonomous medieval tavern NPC.
 
 NPC:
+Name: {npc.name}
+Role: {npc.role}
+Personality: {npc.personality}
+Current mood: {npc.mood}
 
-{npc_name}
-
-PERSONALITY:
-
-{personality}
-
-CURRENT MOOD:
-
-{mood}
-
-WORLD:
-
+World:
 {world_state}
 
-AVAILABLE CHARACTERS:
+Other NPCs:
+{available_npcs}
 
-{available_characters}
-
-Decide what the NPC naturally wants to do.
+Decide what this NPC wants to do right now.
 
 Possible actions:
 
-talk
-wait
-interrupt
-leave
+1. talk
+   - Start or join a conversation.
+   - If talking, choose another NPC as target.
 
-Do not force conversation.
+2. work
+   - Perform their normal tavern-related responsibilities.
 
-Choose an action naturally based on personality and mood.
+3. wander
+   - Move around, observe the tavern, inspect something, etc.
+
+4. rest
+   - Sit down, eat, drink, relax, etc.
+
+IMPORTANT:
+
+- NPCs should behave autonomously.
+- Do not make everyone talk every turn.
+- Personality and mood should influence decisions.
+- Eva is naturally social.
+- Freddy may focus on the tavern's financial situation.
+- John enjoys socializing and especially likes talking to Eva.
+- The same NPC should not repeatedly choose the same action without reason.
+- If action is "talk", target must be another NPC.
+- initiative should be between 1 and 5.
+
+Return only the structured decision.
 """
-    )
 
+        try:
+            result = self.chain.invoke(prompt)
 
-    chain = prompt | structured_llm
+            # Keep initiative safe even if the model gives
+            # an unexpected value.
+            result.initiative = max(
+                1,
+                min(5, result.initiative)
+            )
 
+            return result
 
-    return chain.invoke({
+        except Exception as e:
 
-        "npc_name": npc_name,
+            print(
+                f"⚠️ Decision error for {npc.name}: {e}"
+            )
 
-        "personality": personality,
+            # Safe fallback
+            targets = [
+                name
+                for name in available_npcs
+                if name != npc.name
+            ]
 
-        "mood": mood,
-
-        "world_state": world_state,
-
-        "available_characters": available_characters
-
-    })
+            return ActionDecision(
+                action="talk",
+                target=targets[0] if targets else None,
+                initiative=3,
+                reason="Fallback decision"
+            )

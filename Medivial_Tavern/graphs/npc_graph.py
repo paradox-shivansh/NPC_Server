@@ -1,81 +1,51 @@
-from langgraph.graph import StateGraph, END,START
-
 from typing import TypedDict
 
+from langgraph.graph import (
+    StateGraph,
+    END
+)
 
-class NPCState(
 
-    TypedDict
+class NPCState(TypedDict):
 
-):
-
-    world_state: dict
-
+    npc: object
+    world: object
     characters: list
-
-    decision: object
-
-
-def build_npc_graph(
-
-    npc
-
-):
+    decision: dict
 
 
-    def decision_node(
+def build_npc_graph():
 
-        state
+    def decision_node(state):
 
-    ):
-
+        npc = state["npc"]
 
         decision = npc.decide(
-
-            world_state=state["world_state"],
-
+            world_state=state["world"].to_dict(),
             characters=state["characters"]
-
         )
 
-
         return {
-
             "decision": decision
-
         }
 
 
     workflow = StateGraph(
-
         NPCState
-
     )
-
 
     workflow.add_node(
-
         "decision",
-
         decision_node
-
     )
-
 
     workflow.set_entry_point(
-
         "decision"
-
     )
-
 
     workflow.add_edge(
-
         "decision",
-
         END
-
     )
-
 
     return workflow.compile()

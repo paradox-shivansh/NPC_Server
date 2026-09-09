@@ -1,53 +1,47 @@
-from pydantic import BaseModel
+import json
 
 
-class ReflectionResult(
-
-    BaseModel
-
-):
-
-    lesson: str
-
-    importance: float
-
-
-def reflect(
-
+def generate_reflection(
     llm,
-
-    npc_name,
-
-    experience
-
+    npc,
+    conversation
 ):
-
-
-    structured_llm = llm.with_structured_output(
-
-        ReflectionResult
-
-    )
-
 
     prompt = f"""
-You are {npc_name}.
+You are the internal reflection system
+for the NPC {npc.name}.
 
-Reflect on this experience:
+PERSONALITY:
+{npc.personality}
 
-{experience}
+CONVERSATION:
+{conversation}
 
-What should you learn from it?
+Determine what {npc.name} learned from this interaction.
 
-Keep the lesson short.
+Return ONLY JSON:
+
+{{
+    "lesson": "what the character learned",
+    "importance": 0.0
+}}
+
+Importance must be between 0 and 1.
 """
 
-
-    result = structured_llm.invoke(
-
+    response = llm.invoke(
         prompt
-
     )
 
+    try:
 
-    return result
+        return json.loads(
+            response.content
+        )
+
+    except Exception:
+
+        return {
+            "lesson": "",
+            "importance": 0
+        }

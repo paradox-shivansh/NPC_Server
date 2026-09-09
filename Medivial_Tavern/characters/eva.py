@@ -1,30 +1,27 @@
 from agents.npc_agent import NPCAgent
 
-from config.characters import CHARACTERS
 
+def create_eva(llm):
 
-def create_eva(
+    config = {
+        "name": "Eva",
+        "role": "Tavern worker",
 
-    llm
+        "personality": (
+            "Eva is kind, warm, friendly and highly social. "
+            "She loves talking to people and naturally tries to make "
+            "others feel comfortable and happy. She is empathetic, "
+            "optimistic and enjoys hearing people's stories."
+        ),
 
-):
-
-
-    data = CHARACTERS["eva"]
-
+        "mood": "cheerful"
+    }
 
     return NPCAgent(
-
         npc_id="eva",
-
-        name=data["name"],
-
-        role=data["role"],
-
-        personality=data["description"],
-
-        mood=data["default_mood"],
-
+        name=config["name"],
+        role=config["role"],
+        personality=config["personality"],
+        mood=config["mood"],
         llm=llm
-
     )

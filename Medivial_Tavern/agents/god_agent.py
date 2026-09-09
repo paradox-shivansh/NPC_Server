@@ -1,85 +1,64 @@
-from pydantic import BaseModel
+import json
 
-from langchain_core.prompts import ChatPromptTemplate
-
-
-class DayEvent(
-
-    BaseModel
-
-):
-
-    description: str
-
-
-class DailyWorld(
-
-    BaseModel
-
-):
-
-    weather: str
-
-    tavern_condition: str
-
-    event: str
-
-    eva_mood_change: float
-
-    freddy_mood_change: float
-
-    john_mood_change: float
+from world.world_state import WorldState
 
 
 def create_day(
-
     llm,
-
     day_number
-
 ):
 
+    prompt = f"""
+You are the God entity controlling a medieval tavern simulation.
 
-    structured_llm = llm.with_structured_output(
-
-        DailyWorld
-
-    )
-
-
-    prompt = ChatPromptTemplate.from_template(
-
-        """
-You are the God Entity controlling a medieval tavern simulation.
-
-Create Day {day_number}.
+Create the circumstances for DAY {day_number}.
 
 Generate:
 
-Weather.
+- weather
+- tavern event
+- general mood
+- special event
 
-Tavern condition.
+These should create opportunities for NPCs to behave differently.
 
-One interesting event.
+Characters should NOT be directly controlled.
 
-Small mood changes for:
+Only influence the circumstances.
 
-Eva
-Freddy
-John
+Return ONLY JSON:
 
-Keep events believable and suitable for a medieval tavern.
-
-Do not directly control what characters say.
+{{
+    "weather": "...",
+    "tavern_event": "...",
+    "general_mood": "...",
+    "special_event": "..."
+}}
 """
+
+    response = llm.invoke(
+        prompt
     )
 
+    try:
 
-    chain = prompt | structured_llm
+        data = json.loads(
+            response.content
+        )
 
+    except Exception:
 
-    return chain.invoke({
+        data = {
+            "weather": "Rainy",
+            "tavern_event": "Few customers arrive.",
+            "general_mood": "Quiet",
+            "special_event": "A traveling merchant arrives."
+        }
 
-        "day_number": day_number
-
-    })
+    return WorldState(
+        day_number=day_number,
+        weather=data["weather"],
+        tavern_event=data["tavern_event"],
+        general_mood=data["general_mood"],
+        special_event=data["special_event"]
+    )

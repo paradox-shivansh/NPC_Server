@@ -1,58 +1,33 @@
 class ConversationState:
 
-
     def __init__(
-
         self,
-
         participants
-
     ):
-
 
         self.participants = participants
 
         self.messages = []
 
-        self.active = True
-
 
     def add_message(
-
         self,
-
         speaker,
-
-        message
-
+        content
     ):
 
-
         self.messages.append({
-
             "speaker": speaker,
-
-            "message": message
-
+            "content": content
         })
 
 
     def get_history(self):
 
+        return "\n".join(
+            f"{message['speaker']}: "
+            f"{message['content']}"
 
-        history = ""
-
-
-        for message in self.messages:
-
-
-            history += (
-
-                f"{message['speaker']}: "
-
-                f"{message['message']}\n"
-
-            )
-
-
-        return history
+            for message
+            in self.messages
+        )

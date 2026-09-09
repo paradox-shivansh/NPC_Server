@@ -1,140 +1,140 @@
-from memory.entity_memory import EntityMemory
-
 from memory.episodic_memory import EpisodicMemory
-
-from memory.summary_memory import SummaryMemory
-
+from memory.entity_memory import EntityMemory
 from memory.reflection_memory import ReflectionMemory
-
+from memory.summary_memory import SummaryMemory
 from memory.character_memory import CharacterMemory
-
-from memory.relationship_memory import RelationshipMemory
-
-from memory.memory_router import MemoryRouter
 
 
 class NPCMemorySystem:
 
-
-    def __init__(
-
-        self,
-
-        npc_id
-
-    ):
+    def __init__(self, npc_id: str):
 
         self.npc_id = npc_id
 
+        # =============================================
+        # INDIVIDUAL MEMORY SYSTEMS
+        # =============================================
 
-        self.entity = EntityMemory(
+        self.episodic = EpisodicMemory(npc_id)
+        self.entity = EntityMemory(npc_id)
+        self.reflection = ReflectionMemory(npc_id)
+        self.summary = SummaryMemory(npc_id)
+        self.character = CharacterMemory(npc_id)
 
-            npc_id
+    # =============================================
+    # WRITE MEMORY
+    # =============================================
 
-        )
-
-
-        self.episodic = EpisodicMemory(
-
-            npc_id
-
-        )
-
-
-        self.summary = SummaryMemory(
-
-            npc_id
-
-        )
-
-
-        self.reflection = ReflectionMemory(
-
-            npc_id
-
-        )
-
-
-        self.character = CharacterMemory(
-
-            npc_id
-
-        )
-
-
-        self.relationship = RelationshipMemory(
-
-            npc_id
-
-        )
-
-
-        self.router = MemoryRouter()
-
-
-    def retrieve(
-
+    def remember_episode(
         self,
-
-        query
-
+        content,
+        importance=0.5
     ):
 
-        memory_types = self.router.route(
-
-            query
-
+        return self.episodic.add_episode(
+            content=content,
+            importance=importance
         )
 
+    # ---------------------------------------------
 
-        result = {}
+    def remember_entity(
+        self,
+        entity,
+        fact,
+        importance=0.5
+    ):
 
-
-        if "episodic" in memory_types:
-
-            result["episodes"] = (
-
-                self.episodic.retrieve(
-
-                    query
-
-                )
-
-            )
-
-
-        if "entity" in memory_types:
-
-            result["entities"] = (
-
-                self.entity.search_memory(
-
-                    query
-
-                )
-
-            )
-
-
-        result["summary"] = (
-
-            self.summary.get_latest()
-
+        return self.entity.add_memory(
+            entity=entity,
+            fact=fact,
+            importance=importance
         )
 
+    # ---------------------------------------------
 
-        result["reflections"] = (
+    def remember_reflection(
+        self,
+        lesson,
+        importance=0.5
+    ):
 
-            self.reflection.get_reflections()
-
+        return self.reflection.add_reflection(
+            lesson=lesson,
+            importance=importance
         )
 
+    # ---------------------------------------------
 
-        result["character"] = (
+    def update_character(
+        self,
+        traits
+    ):
 
-            self.character.get_traits()
-
+        return self.character.update_traits(
+            traits
         )
 
+    # =============================================
+    # READ MEMORY
+    # =============================================
 
-        return result
+    def retrieve(
+        self,
+        query
+    ):
+
+        episodic = self.episodic.retrieve(
+            query=query,
+            limit=5
+        )
+
+        entities = self.entity.retrieve(
+            limit=5
+        )
+
+        reflections = self.reflection.get_reflections(
+            limit=3
+        )
+
+        summary = self.summary.get_latest()
+
+        character = self.character.get_traits()
+
+        return {
+            "episodic": episodic,
+            "entities": entities,
+            "reflections": reflections,
+            "summary": summary,
+            "character": character
+        }
+
+    # =============================================
+    # INDIVIDUAL MEMORY ACCESS
+    # =============================================
+
+    def get_character(self):
+
+        return self.character.get_traits()
+
+    # ---------------------------------------------
+
+    def get_entities(self):
+
+        return self.entity.retrieve(
+            limit=10
+        )
+
+    # ---------------------------------------------
+
+    def get_reflections(self):
+
+        return self.reflection.get_reflections(
+            limit=10
+        )
+
+    # ---------------------------------------------
+
+    def get_summary(self):
+
+        return self.summary.get_latest()

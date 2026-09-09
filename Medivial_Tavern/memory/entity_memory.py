@@ -1,4 +1,7 @@
-from database.database import get_connection
+from database.database import (
+    get_connection,
+    initialize_database
+)
 
 
 class EntityMemory:
@@ -7,116 +10,79 @@ class EntityMemory:
 
         self.npc_id = npc_id
 
-        self.create_table()
-
-
-    def create_table(self):
-
-        connection = get_connection(self.npc_id)
-
-        cursor = connection.cursor()
-
-        cursor.execute("""
-        CREATE TABLE IF NOT EXISTS entity_memory (
-
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-
-            entity TEXT,
-
-            fact TEXT,
-
-            importance REAL,
-
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-
+        initialize_database(
+            npc_id
         )
-        """)
-
-        connection.commit()
-
-        connection.close()
 
 
     def add_memory(
-
         self,
-
         entity,
-
         fact,
-
         importance=0.5
-
     ):
 
-        connection = get_connection(self.npc_id)
+        connection = get_connection(
+            self.npc_id
+        )
 
         cursor = connection.cursor()
 
         cursor.execute("""
-        INSERT INTO entity_memory
-
-        (entity, fact, importance)
-
-        VALUES (?, ?, ?)
+            INSERT INTO entities
+            (entity, fact, importance)
+            VALUES (?, ?, ?)
         """, (
-
             entity,
-
             fact,
-
             importance
-
         ))
 
         connection.commit()
-
         connection.close()
 
 
-    def search_memory(
-
+    def retrieve(
         self,
-
-        query,
-
-        limit=5
-
+        entity=None,
+        limit=10
     ):
 
-        connection = get_connection(self.npc_id)
+        connection = get_connection(
+            self.npc_id
+        )
 
         cursor = connection.cursor()
 
-        cursor.execute("""
-        SELECT *
+        if entity:
 
-        FROM entity_memory
+            cursor.execute("""
+                SELECT *
+                FROM entities
+                WHERE entity = ?
+                ORDER BY importance DESC
+                LIMIT ?
+            """, (
+                entity,
+                limit
+            ))
 
-        WHERE entity LIKE ?
-        OR fact LIKE ?
+        else:
 
-        ORDER BY importance DESC
-
-        LIMIT ?
-        """, (
-
-            f"%{query}%",
-
-            f"%{query}%",
-
-            limit
-
-        ))
+            cursor.execute("""
+                SELECT *
+                FROM entities
+                ORDER BY importance DESC
+                LIMIT ?
+            """, (
+                limit,
+            ))
 
         rows = cursor.fetchall()
 
         connection.close()
 
         return [
-
             dict(row)
-
             for row in rows
-
         ]

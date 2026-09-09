@@ -1,328 +1,223 @@
+import random
+
 from langchain_groq import ChatGroq
 
-
 from config.settings import (
-
+    GROQ_API_KEY,
     MODEL_NAME,
-
     TEMPERATURE,
-
     DAY_DURATION,
-
-    SIMULATION_STEP
-
+    SIMULATION_STEP,
 )
 
-
 from characters.eva import create_eva
-
 from characters.freddy import create_freddy
-
 from characters.john import create_john
 
-
-from agents.god_agent import create_day
-
 from agents.reviewer_agent import ReviewerAgent
-
-
-from world.world_state import WorldState
-
-from world.day_manager import DayManager
-
+from agents.god_agent import create_day
 
 from conversation.conversation_manager import ConversationManager
 
-from database.schema import initialize_database
+from world.day_manager import DayManager
+
+from graphs.simulation_graph import build_simulation_graph
 
 
-initialize_database("eva")
-initialize_database("freddy")
-initialize_database("john")
-# =====================================
-# CREATE LLM
-# =====================================
+# --------------------------------------------------
+# LLM
+# --------------------------------------------------
 
 llm = ChatGroq(
-
+    api_key=GROQ_API_KEY,
     model=MODEL_NAME,
-
-    temperature=TEMPERATURE
-
+    temperature=TEMPERATURE,
 )
 
 
-# =====================================
-# CREATE NPCs
-# =====================================
+# --------------------------------------------------
+# CHARACTERS
+# --------------------------------------------------
 
-eva = create_eva(
+eva = create_eva(llm)
+freddy = create_freddy(llm)
+john = create_john(llm)
 
-    llm
-
-)
-
-
-freddy = create_freddy(
-
-    llm
-
-)
+characters = {
+    "Eva": eva,
+    "Freddy": freddy,
+    "John": john,
+}
 
 
-john = create_john(
-
-    llm
-
-
-)
-
-
-characters = [
-
-    eva,
-
-    freddy,
-
-    john
-
-]
-
-
-# =====================================
+# --------------------------------------------------
 # REVIEWER
-# =====================================
+# --------------------------------------------------
 
-reviewer = ReviewerAgent(
-
-    llm
-
-)
-
+reviewer = ReviewerAgent(llm)
 
 conversation_manager = ConversationManager(
-
     reviewer
-
 )
 
 
-# =====================================
-# DAY MANAGER
-# =====================================
-day_manager = DayManager(
-    duration=DAY_DURATION,
-    simulation_step=SIMULATION_STEP
-)
+# --------------------------------------------------
+# GOD
+# --------------------------------------------------
 
-# =====================================
-# CREATE WORLD
-# =====================================
-
-def generate_world(
-
-    day_number
-
-):
-
-
-    daily_world = create_day(
-
-        llm,
-
-        day_number
-
-    )
-
-
-    world = WorldState(
-
+def generate_day(day_number):
+    return create_day(
+        llm=llm,
         day_number=day_number,
-
-        weather=daily_world.weather,
-
-        tavern_condition=daily_world.tavern_condition,
-
-        event=daily_world.event
-
     )
 
 
-    # Apply mood changes
+# --------------------------------------------------
+# SIMULATION
+# --------------------------------------------------
 
-    eva.mood["happiness"] += (
+def run_simulation(world):
 
-        daily_world.eva_mood_change
-
+    # Random NPC gets a chance to initiate
+    npc = random.choice(
+        list(characters.values())
     )
 
-
-    freddy.mood["happiness"] += (
-
-        daily_world.freddy_mood_change
-
+    # Ask the NPC what it wants to do
+    decision = npc.decide(
+        world_state=world.to_dict(),
+        characters=characters,
     )
-
-
-    john.mood["happiness"] += (
-
-        daily_world.john_mood_change
-
-    )
-
-
-    return world
-
-
-# =====================================
-# SIMULATION STEP
-# =====================================
-
-def simulation_step(
-
-    world
-
-):
-
 
     print(
-
-        "\n"
-
-        "============================"
-
+        f"\n🎭 {npc.name} decided:"
     )
-
 
     print(
-
-        "🧠 NPC DECISION PHASE"
-
+        decision
     )
 
+    # --------------------------------------------------
+    # NON-TALK ACTION
+    # --------------------------------------------------
 
-    print(
-
-        "============================"
-
-    )
-
-
-    decisions = []
-
-
-    for npc in characters:
-
-
-        other_characters = [
-
-            character.name
-
-            for character in characters
-
-            if character != npc
-
-        ]
-
-
-        decision = npc.decide(
-
-            world_state=world.to_dict(),
-
-            characters=other_characters
-
-        )
-
-
-        decisions.append(
-
-            (
-
-                npc,
-
-                decision
-
-            )
-
-        )
-
+    if decision.action != "talk":
 
         print(
-
-            f"\n{npc.name}"
-
-            f" → {decision.action}"
-
-            f" → {decision.target}"
-
+            f"{npc.name} chooses to "
+            f"{decision.action}."
         )
 
+        return
 
-    # Find someone who wants to talk
+    # --------------------------------------------------
+    # TALK ACTION
+    # --------------------------------------------------
 
-    for npc, decision in decisions:
+    target_name = decision.target
 
+    if not target_name:
+
+        print(
+            f"⚠️ {npc.name} chose to talk "
+            f"but did not select a target."
+        )
+
+        return
+
+    # --------------------------------------------------
+    # FIND TARGET
+    # --------------------------------------------------
+
+    target = None
+
+    for character in characters.values():
 
         if (
-
-            decision.action == "talk"
-
-            and decision.target
-
+            character.name.lower()
+            == target_name.lower()
         ):
+            target = character
+            break
+
+    # --------------------------------------------------
+    # TARGET NOT FOUND
+    # --------------------------------------------------
+
+    if target is None:
+
+        print(
+            f"⚠️ Target '{target_name}' "
+            f"not found."
+        )
+
+        return
+
+    # Prevent self-conversation
+    if target.name == npc.name:
+
+        print(
+            f"⚠️ {npc.name} cannot talk "
+            f"to themselves."
+        )
+
+        return
+
+    # --------------------------------------------------
+    # START CONVERSATION
+    # --------------------------------------------------
+
+    print(
+        f"\n💬 {npc.name} wants to talk "
+        f"to {target.name}"
+    )
+
+    conversation_manager.start_conversation(
+        npc_one=npc,
+        npc_two=target,
+        world_state=world,
+    )
 
 
-            target = next(
+# --------------------------------------------------
+# DAY MANAGER
+# --------------------------------------------------
 
-                (
-
-                    character
-
-                    for character in characters
-
-                    if character.name.lower()
-
-                    == decision.target.lower()
-
-                ),
-
-                None
-
-            )
-
-
-            if target:
-
-
-                conversation_manager.start_conversation(
-
-                    npc_one=npc,
-
-                    npc_two=target,
-
-                    world_state=world
-
-                )
-
-
-                break
-
-
-# =====================================
-# MAIN SIMULATION
-# =====================================
-
-print(
-
-    "\n🏰 MEDIEVAL TAVERN SIMULATION STARTED"
-
+day_manager = DayManager(
+    duration=DAY_DURATION,
+    simulation_step=SIMULATION_STEP,
 )
 
 
+# --------------------------------------------------
+# LANGGRAPH SIMULATION
+# --------------------------------------------------
+
+simulation_graph = build_simulation_graph(
+    create_day_function=generate_day,
+
+    run_simulation_function=lambda world:
+        day_manager.run_day(
+            run_simulation,
+            world,
+        ),
+)
+
+
+# --------------------------------------------------
+# MAIN LOOP
+# --------------------------------------------------
+
 print(
+    "\n🧙 MEDIEVAL TAVERN SIMULATION"
+)
 
-    "Press CTRL+C to stop.\n"
+print(
+    "Eva, Freddy and John are alive."
+)
 
+print(
+    "Type Ctrl+C to stop.\n"
 )
 
 
@@ -331,89 +226,38 @@ day_number = 1
 
 try:
 
-
     while True:
 
+        print(
+            "\n================================"
+        )
 
         print(
-
-            "\n"
-
-            "===================================="
-
+            f"STARTING DAY {day_number}"
         )
-
 
         print(
-
-            f"🌅 DAY {day_number}"
-
+            "================================"
         )
 
-
-        print(
-
-            "===================================="
-
+        # Run one complete day
+        simulation_graph.invoke(
+            {
+                "day_number": day_number,
+                "world": None,
+            }
         )
 
-
-        world = generate_world(
-
-            day_number
-
-        )
-
-
-        print(
-
-            f"\n🌦 Weather: {world.weather}"
-
-        )
-
-
-        print(
-
-            f"🏰 Tavern: {world.tavern_condition}"
-
-        )
-
-
-        print(
-
-            f"⚡ Event: {world.event}"
-
-        )
-
-
-        day_manager.run_day(
-
-            lambda:
-
-            simulation_step(
-
-                world
-
-            )
-
-        )
-
-
-        print(
-
-            f"\n🌙 DAY {day_number} ENDED"
-
-        )
-
-
+        # Move to next day
         day_number += 1
 
 
 except KeyboardInterrupt:
 
+    print(
+        "\n\n🛑 Simulation stopped."
+    )
 
     print(
-
-        "\n\n🛑 Simulation stopped."
-
+        "All persistent memories remain stored."
     )

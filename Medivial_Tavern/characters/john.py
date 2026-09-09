@@ -1,30 +1,29 @@
 from agents.npc_agent import NPCAgent
 
-from config.characters import CHARACTERS
 
+def create_john(llm):
 
-def create_john(
+    config = {
+        "name": "John",
+        "role": "Tavern regular",
 
-    llm
+        "personality": (
+            "John is a middle-aged man who enjoys spending time "
+            "at the tavern. He likes Eva and is somewhat flirtatious "
+            "with her, but generally remains gentle and friendly. "
+            "He responds according to how others treat him. "
+            "If someone speaks harshly to him, he can become more "
+            "serious or defensive."
+        ),
 
-):
-
-
-    data = CHARACTERS["john"]
-
+        "mood": "gentle"
+    }
 
     return NPCAgent(
-
         npc_id="john",
-
-        name=data["name"],
-
-        role=data["role"],
-
-        personality=data["description"],
-
-        mood=data["default_mood"],
-
+        name=config["name"],
+        role=config["role"],
+        personality=config["personality"],
+        mood=config["mood"],
         llm=llm
-
     )

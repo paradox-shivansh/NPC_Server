@@ -1,33 +1,39 @@
 class ConversationState:
 
-    def __init__(
-        self,
-        participants
-    ):
+    def __init__(self, participants):
 
         self.participants = participants
-
         self.messages = []
+
+
+    def add_participant(self, npc):
+
+        if npc not in self.participants:
+
+            self.participants.append(npc)
+
+
+    def remove_participant(self, npc):
+
+        if npc in self.participants:
+
+            self.participants.remove(npc)
 
 
     def add_message(
         self,
         speaker,
-        content
+        message
     ):
 
-        self.messages.append({
-            "speaker": speaker,
-            "content": content
-        })
+        self.messages.append(
+            {
+                "speaker": speaker,
+                "message": message
+            }
+        )
 
 
     def get_history(self):
 
-        return "\n".join(
-            f"{message['speaker']}: "
-            f"{message['content']}"
-
-            for message
-            in self.messages
-        )
+        return self.messages

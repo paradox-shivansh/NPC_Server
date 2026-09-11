@@ -42,16 +42,18 @@ class NPCAgent:
     # =============================================
 
     def decide(
-        self,
-        world_state,
-        characters
-    ):
+    self,
+    world_state,
+    characters,
+    active_conversation=None
+        ):
 
         return self.decision_agent.decide(
-            npc=self,
-            world_state=world_state,
-            available_npcs=characters
-        )
+        npc=self,
+        world_state=world_state,
+        available_npcs=characters,
+        active_conversation=active_conversation
+            )
 
     # =============================================
     # MOOD
@@ -105,6 +107,13 @@ MEMORY:
 
 You are currently speaking to:
 {target}
+
+The conversation may contain multiple NPCs.
+
+If several NPCs are present, you may address
+one specific NPC or the entire group.
+
+React naturally to what has actually been said.
 
 PREVIOUS CONVERSATION:
 {conversation}

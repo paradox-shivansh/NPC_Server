@@ -181,10 +181,10 @@ def run_simulation(world):
     )
 
     conversation_manager.start_conversation(
-        npc_one=npc,
-        npc_two=target,
-        world_state=world,
-    )
+    npc_one=npc,
+    npc_two=target,
+    world_state=world,
+    all_npcs=characters,)
 
 
 # --------------------------------------------------

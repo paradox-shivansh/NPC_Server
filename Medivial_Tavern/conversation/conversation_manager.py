@@ -13,7 +13,75 @@ class ConversationManager:
         self.tts_manager = tts_manager
 
     # =====================================================
-    # CHECK WHETHER AN OUTSIDE NPC WANTS TO INTERRUPT
+    # SPEAK + TTS + MEMORY
+    # =====================================================
+
+    def speak_as(
+        self,
+        speaker,
+        target,
+        conversation,
+        world_state
+    ):
+
+        history = conversation.get_history()
+
+        response = speaker.speak(
+            target=target.name,
+            conversation=history,
+            world_state=world_state.to_dict()
+        )
+
+        # -------------------------------------------------
+        # SAVE MESSAGE
+        # -------------------------------------------------
+
+        conversation.add_message(
+            speaker.name,
+            response
+        )
+
+        # -------------------------------------------------
+        # PRINT
+        # -------------------------------------------------
+
+        print(
+            f"\n{speaker.name}: {response}"
+        )
+
+        # -------------------------------------------------
+        # TTS
+        # -------------------------------------------------
+
+        if response and response.strip():
+
+            try:
+
+                self.tts_manager.speak(
+                    character_name=speaker.name,
+                    text=response
+                )
+
+            except Exception as e:
+
+                print(
+                    f"⚠️ TTS error: {e}"
+                )
+
+        # -------------------------------------------------
+        # MEMORY
+        # -------------------------------------------------
+
+        speaker.remember_episode(
+            f"Conversation with "
+            f"{target.name}: {response}",
+            importance=0.6
+        )
+
+        return response
+
+    # =====================================================
+    # CHECK FOR INTERRUPTIONS
     # =====================================================
 
     def check_for_interruptions(
@@ -23,18 +91,18 @@ class ConversationManager:
         world_state
     ):
 
-        # NPCs already inside the conversation
         active_npcs = conversation.participants
 
-        # NPCs who are currently outside
         observers = [
             npc
             for npc in all_npcs.values()
             if npc not in active_npcs
         ]
 
-        # Ask each outside NPC whether they want
-        # to interrupt / join
+        # Randomize observer order so the same NPC
+        # does not always get priority.
+        random.shuffle(observers)
+
         for npc in observers:
 
             decision = npc.decide(
@@ -65,44 +133,52 @@ class ConversationManager:
             f"\n⚡ {npc.name} interrupts the conversation!"
         )
 
-        # -----------------------------------------
-        # GET INTERRUPTION MESSAGE
-        # -----------------------------------------
+        # -------------------------------------------------
+        # MESSAGE
+        # -------------------------------------------------
 
         message = decision.message
 
-        # If the decision agent didn't provide one,
-        # generate one normally
+        # If the LLM did not provide a message,
+        # generate one.
         if not message:
 
-            target = decision.target or "everyone"
+            participants = conversation.participants
+
+            target = random.choice(
+                [
+                    p
+                    for p in participants
+                    if p != npc
+                ]
+            )
 
             message = npc.speak(
-                target=target,
+                target=target.name,
                 conversation=conversation.get_history(),
                 world_state=world_state.to_dict()
             )
 
-        # -----------------------------------------
-        # PRINT
-        # -----------------------------------------
-
-        print(
-            f"\n{npc.name}: {message}"
-        )
-
-        # -----------------------------------------
-        # SAVE MESSAGE
-        # -----------------------------------------
+        # -------------------------------------------------
+        # SAVE
+        # -------------------------------------------------
 
         conversation.add_message(
             npc.name,
             message
         )
 
-        # -----------------------------------------
+        # -------------------------------------------------
+        # PRINT
+        # -------------------------------------------------
+
+        print(
+            f"\n{npc.name}: {message}"
+        )
+
+        # -------------------------------------------------
         # TTS
-        # -----------------------------------------
+        # -------------------------------------------------
 
         if message and message.strip():
 
@@ -119,24 +195,24 @@ class ConversationManager:
                     f"⚠️ TTS error: {e}"
                 )
 
-        # -----------------------------------------
-        # ADD NPC TO CONVERSATION
-        # -----------------------------------------
-
-        conversation.add_participant(
-            npc
-        )
-
-        # -----------------------------------------
+        # -------------------------------------------------
         # MEMORY
-        # -----------------------------------------
+        # -------------------------------------------------
 
         npc.remember_episode(
             f"Interrupted a conversation: {message}",
             importance=0.7
         )
 
-        return decision
+        # -------------------------------------------------
+        # ADD NPC
+        # -------------------------------------------------
+
+        conversation.add_participant(
+            npc
+        )
+
+        return npc
 
     # =====================================================
     # CHOOSE NEXT SPEAKER
@@ -150,18 +226,17 @@ class ConversationManager:
 
         participants = conversation.participants
 
-        # Nobody else is available
-        if len(participants) <= 1:
-            return None
-
-        possible_speakers = [
+        candidates = [
             npc
             for npc in participants
             if npc != current_speaker
         ]
 
+        if not candidates:
+            return None
+
         return random.choice(
-            possible_speakers
+            candidates
         )
 
     # =====================================================
@@ -176,10 +251,6 @@ class ConversationManager:
         all_npcs
     ):
 
-        # -----------------------------------------
-        # CREATE CONVERSATION
-        # -----------------------------------------
-
         conversation = ConversationState(
             participants=[
                 npc_one,
@@ -192,12 +263,11 @@ class ConversationManager:
             f"to {npc_two.name}"
         )
 
-        # First speaker
         current_speaker = npc_one
 
-        # -----------------------------------------
+        # =================================================
         # CONVERSATION LOOP
-        # -----------------------------------------
+        # =================================================
 
         for turn in range(10):
 
@@ -206,7 +276,7 @@ class ConversationManager:
             )
 
             # =================================================
-            # CHECK FOR OUTSIDE NPC INTERRUPTION
+            # CHECK FOR OUTSIDE INTERRUPTIONS
             # =================================================
 
             interrupter, decision = (
@@ -217,9 +287,9 @@ class ConversationManager:
                 )
             )
 
-            # -----------------------------------------
-            # INTERRUPTION FOUND
-            # -----------------------------------------
+            # =================================================
+            # INTERRUPTION
+            # =================================================
 
             if interrupter:
 
@@ -230,14 +300,35 @@ class ConversationManager:
                     world_state=world_state
                 )
 
-                # The interrupter gets a chance to
-                # continue the conversation
-                current_speaker = interrupter
+                # -----------------------------------------
+                # IMPORTANT
+                #
+                # The interrupter has already spoken.
+                #
+                # DO NOT set:
+                #
+                # current_speaker = interrupter
+                #
+                # Instead choose an existing participant
+                # to respond.
+                # -----------------------------------------
+
+                responders = [
+                    npc
+                    for npc in conversation.participants
+                    if npc != interrupter
+                ]
+
+                if responders:
+
+                    current_speaker = random.choice(
+                        responders
+                    )
 
                 continue
 
             # =================================================
-            # CHOOSE WHO CURRENT NPC IS TALKING TO
+            # CHOOSE TARGET
             # =================================================
 
             possible_targets = [
@@ -248,10 +339,6 @@ class ConversationManager:
 
             if not possible_targets:
 
-                print(
-                    "\n🔚 No other participants."
-                )
-
                 break
 
             target = random.choice(
@@ -259,74 +346,18 @@ class ConversationManager:
             )
 
             # =================================================
-            # GET HISTORY
+            # NPC SPEAKS
             # =================================================
 
-            history = conversation.get_history()
-
-            # =================================================
-            # GENERATE RESPONSE
-            # =================================================
-
-            response = current_speaker.speak(
-                target=target.name,
-                conversation=history,
-                world_state=world_state.to_dict()
+            self.speak_as(
+                speaker=current_speaker,
+                target=target,
+                conversation=conversation,
+                world_state=world_state
             )
 
             # =================================================
-            # SAVE MESSAGE
-            # =================================================
-
-            conversation.add_message(
-                current_speaker.name,
-                response
-            )
-
-            # =================================================
-            # PRINT
-            # =================================================
-
-            print(
-                f"\n{current_speaker.name}: "
-                f"{response}"
-            )
-
-            # =================================================
-            # TTS
-            # =================================================
-
-            if response and response.strip():
-
-                try:
-
-                    self.tts_manager.speak(
-                        character_name=current_speaker.name,
-                        text=response
-                    )
-
-                except Exception as e:
-
-                    print(
-                        f"⚠️ TTS error: {e}"
-                    )
-
-                    print(
-                        "Continuing conversation..."
-                    )
-
-            # =================================================
-            # MEMORY
-            # =================================================
-
-            current_speaker.remember_episode(
-                f"Conversation with "
-                f"{target.name}: {response}",
-                importance=0.6
-            )
-
-            # =================================================
-            # REVIEW CONVERSATION
+            # REVIEW
             # =================================================
 
             review = self.reviewer.review(
@@ -345,19 +376,17 @@ class ConversationManager:
                 break
 
             # =================================================
-            # CHOOSE NEXT SPEAKER
+            # NEXT SPEAKER
             # =================================================
 
-            next_speaker = self.choose_next_speaker(
-                current_speaker=current_speaker,
-                conversation=conversation
+            next_speaker = (
+                self.choose_next_speaker(
+                    current_speaker=current_speaker,
+                    conversation=conversation
+                )
             )
 
             if next_speaker is None:
-
-                print(
-                    "\n🔚 Conversation has no next speaker."
-                )
 
                 break
 

@@ -81,3 +81,61 @@ GROQ_API_KEY=your_key_here
 Run:
 
 uv run python main.py
+
+
+
+# Medieval Tavern NPC Simulation
+
+An autonomous medieval tavern simulation where NPCs make decisions, interact with each other, remember past events, react to the world, and speak using character-specific voices.
+
+The system is designed so that NPC behaviour is not hard-coded. Each NPC uses an LLM to decide what to do based on its personality, mood, role, memories, world state, and current interactions.
+
+---
+
+## System Overview
+
+```text
+                    ┌─────────────────┐
+                    │   Day Manager   │
+                    └────────┬────────┘
+                             │
+                             ▼
+                    ┌─────────────────┐
+                    │   World / God   │
+                    │   Creates Day   │
+                    └────────┬────────┘
+                             │
+                             ▼
+              ┌────────────────────────────┐
+              │       NPC Decision         │
+              │ talk / work / wander /     │
+              │ rest / join / interrupt    │
+              └────────────┬───────────────┘
+                           │
+                           ▼
+              ┌────────────────────────────┐
+              │     Conversation Manager   │
+              │                            │
+              │  2-way / 3-way / group     │
+              │  conversations             │
+              │  interruptions             │
+              └────────────┬───────────────┘
+                           │
+              ┌────────────┴─────────────┐
+              ▼                          ▼
+       ┌──────────────┐          ┌──────────────┐
+       │ NPC Memory   │          │  Reviewer    │
+       │ System       │          │    Agent     │
+       └──────┬───────┘          └──────────────┘
+              │
+              ▼
+       Persistent Memory
+       for each NPC
+
+                           │
+                           ▼
+                    ┌──────────────┐
+                    │  TTS Manager │
+                    └──────┬───────┘
+                           ▼
+                         Voice
